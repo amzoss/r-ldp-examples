@@ -1,8 +1,11 @@
 ---
-title: "Testing R Notebooks for LDP Queries"
+title: "Basic FOLIO/LDP querying with R Notebooks"
 output:
   html_document:
     df_print: paged
+    toc: true
+    toc_float: true
+    code_folding: hide
 ---
 
 ```{r load-packages, echo=FALSE, message=FALSE}
