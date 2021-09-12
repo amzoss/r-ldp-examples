@@ -1,0 +1,119 @@
+---
+title: "Testing R Notebooks for LDP Queries"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r load-packages, echo=FALSE, message=FALSE}
+
+library(DBI)
+library(odbc)
+library(tidyverse)
+library(plotly)
+
+# check for correct name of driver
+#odbc::odbcListDrivers()
+
+```
+
+```{r setup-connection, echo=FALSE}
+
+ldp_snapshot <- DBI::dbConnect(odbc::odbc(), 
+                      driver   = "PostgreSQL Driver",
+                      database = "folio_snapshot",
+                      UID      = rstudioapi::askForPassword("Database user"),
+                      PWD      = rstudioapi::askForPassword("Database password"),
+                      server   = "glintcore.net",
+                      port     = 5432,
+                      sslmode  = "require",
+                      bigint   = "integer")
+
+```
+
+## Explore patron groups
+
+```{sql connection=ldp_snapshot, output.var="users"}
+
+-- Query database using SQL but save to R object
+SELECT * FROM public.user_users;
+
+
+```
+
+```{r, echo=FALSE}
+
+# Use R to preview results
+
+head(users)
+
+```
+
+```{sql connection=ldp_snapshot, output.var="groups"}
+
+-- Query database using SQL but save to R object
+SELECT * FROM public.user_groups;
+
+
+```
+
+```{r, echo=FALSE}
+
+# Use R to preview results
+
+head(groups)
+
+```
+
+
+## Count users per patron group
+
+```{sql connection=ldp_snapshot, output.var="users_by_group"}
+
+SELECT patron_group,
+       count(*) AS count
+    FROM public.user_users
+    GROUP BY patron_group
+    ORDER BY count DESC;
+
+```
+
+```{r, echo=FALSE}
+
+users_by_group
+
+```
+
+
+## Show the patron group names
+
+```{sql connection=ldp_snapshot, output.var="users_by_group_names"}
+
+SELECT coalesce(g.group, 'unknown') AS user_group,
+       count(*) AS count
+    FROM public.user_users AS u
+        LEFT JOIN public.user_groups AS g ON u.patron_group = g.id
+    GROUP BY user_group
+    ORDER BY count DESC;
+
+```
+
+
+```{r, echo=FALSE}
+
+plot_ly(users_by_group_names, 
+        x = ~count, 
+        y = ~user_group %>% as_factor %>% fct_reorder(count),
+        type = "bar") %>%
+  layout(yaxis=list(title="patron group"))
+
+```
+
+```{r, echo=FALSE}
+
+plot_ly(users_by_group_names, 
+        values = ~count, 
+        labels = ~user_group %>% as_factor %>% fct_reorder(count),
+        type = "pie")
+
+```
